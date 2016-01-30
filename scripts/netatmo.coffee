@@ -7,21 +7,23 @@ config =
   username:      process.env.NETATMO_USERNAME
   password:      process.env.NETATMO_PASSWORD
 
+types = [
+  "Temperature"
+  "CO2"
+  "Humidity"
+  "Pressure"
+  "Noise"
+]
+
 options =
   device_id: process.env.NETATMO_DEVICE_ID
   scale:     "max"
   date_end:  "last"
-  type:      [
-    "Temperature"
-    "CO2"
-    "Humidity"
-    "Pressure"
-    "Noise"
-  ]
+  type:      types
 
 moment.lang 'ja', {
-  weekdays:      ["日曜日","月曜日","火曜日","水曜日","木曜日","金曜日","土曜日"],
-  weekdaysShort: ["日","月","火","水","木","金","土"]
+  weekdays:      ["日曜日", "月曜日", "火曜日", "水曜日", "木曜日", "金曜日", "土曜日"],
+  weekdaysShort: ["日", "月", "火", "水", "木", "金", "土"]
 }
 
 module.exports = (robot) ->
@@ -32,13 +34,23 @@ module.exports = (robot) ->
       netatmo_api = new Netatmo config
 
     netatmo_api.getMeasure options, (err, measure) ->
-      temperature = measure[0]['value'][0][0]
-      co2         = measure[0]['value'][0][1]
-      humidity    = measure[0]['value'][0][2]
-      pressure    = measure[0]['value'][0][3]
-      noise       = measure[0]['value'][0][4]
+      response    = measure[0]['value'][0]
+      temperature = response[0]
+      co2         = response[1]
+      humidity    = response[2]
+      pressure    = response[3]
+      noise       = response[4]
 
-      result_comment = if co2 > 1000 then "\n空気悪っ！換気しましょう！オフィスのCO2濃度は1000ppmが目安です。1000ppm超えると眠くなるよ！" else ''
       measure_time   = moment.unix(measure[0]['beg_time']).format("YYYY年MM月DD日(ddd) HH:mm:ss ")
+      message = "#{measure_time}に測定した室内環境(dance)\n"
+      message += "[info]"
+      message += "温度：#{temperature}度\n"
+      message += "湿度：#{humidity}%\n"
+      message += "CO2：#{co2}ppm\n"
+      message += "気圧：#{pressure}hPa\n"
+      message += "騒音：#{noise}dB\n"
+      message += "[/info]"
+      if co2 > 1000
+        message += "\n空気が悪いので換気しましょう！オフィスのCO2濃度は1000ppmが目安です！"
 
-      return msg.send "#{measure_time}に測定した室内環境(dance)\n[info]温度：#{temperature}度\n湿度：#{humidity}%\nCO2：#{co2}ppm\n気圧：#{pressure}hPa\n騒音：#{noise}dB[/info]" + result_comment
+      return msg.send message
